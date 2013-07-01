@@ -861,7 +861,7 @@
         else if (property === 'ISOWeekYear'){
           return getISOWeekNumbering(d)[0];
         } else if(property === 'ISOWeekWeek'){
-          rv = getISOWeekNumbering(self.viewDate)[1];
+          rv = getISOWeekNumbering(d)[1];
         } else if (property === 'ISOWeekDay'){
           return d.getUTCDay() || 7;
         }
@@ -929,6 +929,16 @@
           hours = hours % 12;
         }
       }
+
+      // ISO Week processing
+      if(parsed.ISOWeekYear && parsed.ISOWeekWeek && parsed.ISOWeekDay){
+        // Calculate month and date from week and day
+        var dateFromISO = getDateFromISODate(parsed.ISOWeekYear, parsed.ISOWeekWeek, parsed.ISOWeekDay);
+        year = dateFromISO.year;
+        month = dateFromISO.month;
+        date = dateFromISO.date;
+      }
+
       return UTCDate(year, month, date, hours, minutes, seconds, milliseconds);
     },
 
@@ -1223,6 +1233,41 @@
     var weekNo = Math.ceil(( ( (d - yearStart) / 86400000) + 1)/7)
     // Return array of year and week number
     return [d.getFullYear(),weekNo];
+  }
+
+  function getDateFromISODate(year,week,day){
+
+    var normalYearTable = [0,31,59,90,120,151,181,212,243,273,304,334];
+    var leapYearTable =   [0,31,60,91,121,152,182,213,244,274,305,335];
+
+    //Select the right year for set
+    var yearSet = DPGlobal.isLeapYear(year) ? leapYearTable : normalYearTable;
+    
+    var correction = UTCDate(year,0,4).getUTCDay();
+    correction = (correction || 7) + 3; //Sunday as 7
+
+    //convert week+day to days count
+    var ordinalDate = (((week * 7) + day) - correction);
+
+    /*calculate if ordinal is negative or greater than year days*/
+
+    //find the month by running through the set chosen until we reach
+    var monthIndex;
+    $.each(yearSet,function(i,value){
+      if(i === 0) return;
+      if(value > ordinalDate){
+        monthIndex = i - 1;
+        return false;
+      }
+    });
+
+    var dayIndex = ordinalDate - yearSet[monthIndex];
+
+    return {
+      year : year,
+      month : monthIndex,
+      date : dayIndex
+    };
   }
 
   var DPGlobal = {
