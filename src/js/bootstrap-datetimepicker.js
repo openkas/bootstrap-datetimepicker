@@ -400,7 +400,7 @@
           row = $('<tr>');
           html.push(row);
           //Append week numbers
-          if(this.weekNumbers) row.append('<td>(' + getISOWeekNumbering(prevMonth)[1] + ')</td>');
+          if(this.weekNumbers) row.append('<td>(' + getISOWeekNumbering(prevMonth.getUTCFullYear(),prevMonth.getUTCMonth(),prevMonth.getUTCDate())[1] + ')</td>');
         }
         clsName = '';
         if (prevMonth.getUTCFullYear() < year ||
@@ -859,9 +859,9 @@
         } 
         //ISO week construction
         else if (property === 'ISOWeekYear'){
-          return getISOWeekNumbering(UTCDate.apply(null,getUTCComponents(d)))[0];
+          return getISOWeekNumbering(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate())[0];
         } else if(property === 'ISOWeekWeek'){
-          rv = getISOWeekNumbering(UTCDate.apply(null,getUTCComponents(d)))[1];
+          return getISOWeekNumbering(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate())[1];
         } else if (property === 'ISOWeekDay'){
           return d.getUTCDay() || 7;
         }
@@ -1217,26 +1217,12 @@
     return new Date(Date.UTC.apply(Date, arguments));
   }
 
-  function getUTCComponents(d){
-    return [
-      d.getUTCFullYear(),
-      d.getUTCMonth(),
-      d.getUTCDate(),
-      d.getUTCDate(),  
-      d.getUTCHours(), 
-      d.getUTCMinutes(), 
-      d.getUTCSeconds()
-    ];
-  }
-
-
   /* For a given date, get the ISO week number
    * http://stackoverflow.com/a/6117889/575527
    */
-  function getISOWeekNumbering(d) {
+  function getISOWeekNumbering(year,month,date) {
     // Copy date so don't modify original
-    d = new Date(d);
-    d.setHours(0,0,0);
+    d = new Date(year,month,date);
     // Set to nearest Thursday: current date + 4 - current day number
     // Make Sunday's day number 7
     d.setDate(d.getDate() + 4 - (d.getDay()||7));
