@@ -859,9 +859,9 @@
         } 
         //ISO week construction
         else if (property === 'ISOWeekYear'){
-          return getISOWeekNumbering(d)[0];
+          return getISOWeekNumbering(UTCDate.apply(null,getUTCComponents(d)))[0];
         } else if(property === 'ISOWeekWeek'){
-          rv = getISOWeekNumbering(d)[1];
+          rv = getISOWeekNumbering(UTCDate.apply(null,getUTCComponents(d)))[1];
         } else if (property === 'ISOWeekDay'){
           return d.getUTCDay() || 7;
         }
@@ -1216,6 +1216,19 @@
   function UTCDate() {
     return new Date(Date.UTC.apply(Date, arguments));
   }
+
+  function getUTCComponents(d){
+    return [
+      d.getUTCFullYear(),
+      d.getUTCMonth(),
+      d.getUTCDate(),
+      d.getUTCDate(),  
+      d.getUTCHours(), 
+      d.getUTCMinutes(), 
+      d.getUTCSeconds()
+    ];
+  }
+
 
   /* For a given date, get the ISO week number
    * http://stackoverflow.com/a/6117889/575527
