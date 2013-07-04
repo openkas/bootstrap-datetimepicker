@@ -48,6 +48,8 @@
       if (!(options.pickTime || options.pickDate))
         throw new Error('Must choose at least one picker');
       this.options = options;
+      //Option to show week numbers
+      this.weekNumbers = options.weekNumbers;
       this.$element = $(element);
       this.language = options.language in dates ? options.language : 'en'
       this.pickDate = options.pickDate;
@@ -337,6 +339,8 @@
     fillDow: function() {
       var dowCnt = this.weekStart;
       var html = $('<tr>');
+      //Append the week column if set
+      if(this.weekNumbers) html.append('<th class="dow">Wk</th>');
       while (dowCnt < this.weekStart + 7) {
         html.append('<th class="dow">' + dates[this.language].daysMin[(dowCnt++) % 7] + '</th>');
       }
@@ -395,6 +399,8 @@
         if (prevMonth.getUTCDay() === this.weekStart) {
           row = $('<tr>');
           html.push(row);
+          //Append week numbers
+          if(this.weekNumbers) row.append('<td>(' + getISOWeekNumbering(prevMonth.getUTCFullYear(),prevMonth.getUTCMonth(),prevMonth.getUTCDate())[1] + ')</td>');
         }
         clsName = '';
         if (prevMonth.getUTCFullYear() < year ||
@@ -837,6 +843,7 @@
     },
 
     formatDate: function(d) {
+      var self = this;
       return this.format.replace(formatReplacer, function(match) {
         var methodName, property, rv, len = match.length;
         if (match === 'ms')
@@ -849,7 +856,17 @@
         } else if (property === 'Period12') {
           if (d.getUTCHours() >= 12) return 'PM';
           else return 'AM';
-        } else {
+        } 
+        //ISO week construction
+        else if (property === 'ISOWeekYear'){
+          return getISOWeekNumbering(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate())[0];
+        } else if(property === 'ISOWeekWeek'){
+          rv = getISOWeekNumbering(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate())[1];
+        } else if (property === 'ISOWeekDay'){
+          return d.getUTCDay() || 7;
+        }
+        //End ISO week construction
+        else {
           methodName = 'get' + property;
           rv = d[methodName]();
         }
@@ -912,6 +929,16 @@
           hours = hours % 12;
         }
       }
+
+      // ISO Week processing
+      if(parsed.ISOWeekYear && parsed.ISOWeekWeek && parsed.ISOWeekDay){
+        // Calculate month and date from week and day
+        var dateFromISO = getDateFromISODate(parsed.ISOWeekYear, parsed.ISOWeekWeek, parsed.ISOWeekDay);
+        year = dateFromISO.year;
+        month = dateFromISO.month;
+        date = dateFromISO.date;
+      }
+
       return UTCDate(year, month, date, hours, minutes, seconds, milliseconds);
     },
 
@@ -1122,7 +1149,11 @@
     ss: {property: 'UTCSeconds', getPattern: function() {return '(0?[0-9]|[1-5][0-9])\\b';}},
     ms: {property: 'UTCMilliseconds', getPattern: function() {return '([0-9]{1,3})\\b';}},
     HH: {property: 'Hours12', getPattern: function() {return '(0?[1-9]|1[0-2])\\b';}},
-    PP: {property: 'Period12', getPattern: function() {return '(AM|PM|am|pm|Am|aM|Pm|pM)\\b';}}
+    PP: {property: 'Period12', getPattern: function() {return '(AM|PM|am|pm|Am|aM|Pm|pM)\\b';}},
+    //Added ISO week patterns
+    YYYY: {property: 'ISOWeekYear', getPattern: function() {return '(\\d{4})\\b';}},
+    ww: {property: 'ISOWeekWeek', getPattern: function() {return '(0?[1-9]|[1-4][0-9]|5[0-3])\\b';}},
+    d: {property: 'ISOWeekDay', getPattern: function() { return '([1-7])\\b';}},
   };
 
   var keys = [];
@@ -1184,6 +1215,75 @@
 
   function UTCDate() {
     return new Date(Date.UTC.apply(Date, arguments));
+  }
+
+  /*
+   * Get days in year
+   */
+  function getDaysInYear(year){
+    var start = new Date(year,0,1);
+    var end = new Date(year+1,0,1);
+    return (end-start) / 86400000;
+  }
+
+  /* For a given date, get the ISO week number
+   * http://stackoverflow.com/a/6117889/575527
+   */
+  function getISOWeekNumbering(year,month,date) {
+    // Copy date so don't modify original
+    d = new Date(year,month,date);
+    // Set to nearest Thursday: current date + 4 - current day number
+    // Make Sunday's day number 7
+    d.setDate(d.getDate() + 4 - (d.getDay()||7));
+    // Get first day of year
+    var yearStart = new Date(d.getFullYear(),0,1);
+    // Calculate full weeks to nearest Thursday
+    var weekNo = Math.ceil(( ( (d - yearStart) / 86400000) + 1)/7)
+    // Return array of year and week number
+    return [d.getFullYear(),weekNo];
+  }
+
+  function getDateFromISODate(year,week,day){
+
+    var normalYearTable = [0,31,59,90,120,151,181,212,243,273,304,334];
+    var leapYearTable =   [0,31,60,91,121,152,182,213,244,274,305,335];
+
+    
+    var correction = UTCDate(year,0,4).getUTCDay();
+    correction = (correction || 7) + 3; //Sunday as 7
+
+    //convert week+day to days count
+    var ordinalDate = (((week * 7) + day) - correction);
+    var daysInYear = getDaysInYear(year);
+
+    if(ordinalDate > daysInYear){
+      // if ordinal date is greater than the number of days in the year
+      // the extra days belong to the next year
+      year++;
+      ordinalDate = ordinalDate - daysInYear;
+    } else if(ordinalDate < 0){
+      // if the ordinal date is negative, then the date should be moved
+      // back to the previous year, and minus the number of days
+      year--;
+      ordinalDate = getDaysInYear(year) + ordinalDate;
+    }
+
+    //Select the right year for the set to determine the month and year
+    var yearSet = DPGlobal.isLeapYear(year) ? leapYearTable : normalYearTable;
+
+    //find the month by running through the set chosen until we reach
+    var monthIndex = -1;
+    $.each(yearSet,function(i,value){
+      if(ordinalDate >= value) monthIndex++;
+    });
+
+    var dayIndex = ordinalDate - yearSet[monthIndex];
+
+    return {
+      year : year,
+      month : monthIndex,
+      date : dayIndex
+    };
   }
 
   var DPGlobal = {
