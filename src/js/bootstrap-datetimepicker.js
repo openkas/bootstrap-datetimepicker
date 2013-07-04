@@ -861,7 +861,7 @@
         else if (property === 'ISOWeekYear'){
           return getISOWeekNumbering(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate())[0];
         } else if(property === 'ISOWeekWeek'){
-          return getISOWeekNumbering(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate())[1];
+          rv = getISOWeekNumbering(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate())[1];
         } else if (property === 'ISOWeekDay'){
           return d.getUTCDay() || 7;
         }
@@ -1217,6 +1217,15 @@
     return new Date(Date.UTC.apply(Date, arguments));
   }
 
+  /*
+   * Get days in year
+   */
+  function getDaysInYear(year){
+    var start = new Date(year,0,1);
+    var end = new Date(year+1,0,1);
+    return (end-start) / 86400000;
+  }
+
   /* For a given date, get the ISO week number
    * http://stackoverflow.com/a/6117889/575527
    */
@@ -1239,25 +1248,33 @@
     var normalYearTable = [0,31,59,90,120,151,181,212,243,273,304,334];
     var leapYearTable =   [0,31,60,91,121,152,182,213,244,274,305,335];
 
-    //Select the right year for set
-    var yearSet = DPGlobal.isLeapYear(year) ? leapYearTable : normalYearTable;
     
     var correction = UTCDate(year,0,4).getUTCDay();
     correction = (correction || 7) + 3; //Sunday as 7
 
     //convert week+day to days count
     var ordinalDate = (((week * 7) + day) - correction);
+    var daysInYear = getDaysInYear(year);
 
-    /*calculate if ordinal is negative or greater than year days*/
+    if(ordinalDate > daysInYear){
+      // if ordinal date is greater than the number of days in the year
+      // the extra days belong to the next year
+      year++;
+      ordinalDate = ordinalDate - daysInYear;
+    } else if(ordinalDate < 0){
+      // if the ordinal date is negative, then the date should be moved
+      // back to the previous year, and minus the number of days
+      year--;
+      ordinalDate = getDaysInYear(year) + ordinalDate;
+    }
+
+    //Select the right year for the set to determine the month and year
+    var yearSet = DPGlobal.isLeapYear(year) ? leapYearTable : normalYearTable;
 
     //find the month by running through the set chosen until we reach
-    var monthIndex;
+    var monthIndex = -1;
     $.each(yearSet,function(i,value){
-      if(i === 0) return;
-      if(value > ordinalDate){
-        monthIndex = i - 1;
-        return false;
-      }
+      if(ordinalDate >= value) monthIndex++;
     });
 
     var dayIndex = ordinalDate - yearSet[monthIndex];
