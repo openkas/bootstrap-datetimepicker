@@ -1,0 +1,35 @@
+<!doctype html>
+<html>
+	<head>
+    <link rel="stylesheet" type="text/css" href="../components/bootstrap/bootstrap/css/bootstrap.css"/>
+    <link rel="stylesheet" type="text/css" href="../build/css/bootstrap-datetimepicker.min.css"/>
+  </head>
+
+  <body>
+
+    <div class="well">
+      <div id="datetimepicker1" class="input-append date">
+        <input data-format="YYYY-Www-d hh:mm:ss" type="text"></input>
+        <span class="add-on">
+          <i data-time-icon="icon-time" data-date-icon="icon-calendar">
+          </i>
+        </span>
+      </div>
+    </div>
+    
+    <script src="../components/jquery/jquery.js"></script>
+    <script src="../components/bootstrap/bootstrap/js/bootstrap.js"></script>
+    <script src="../build/js/bootstrap-datetimepicker.min.js"></script>
+    <script type="text/javascript">
+      $(function() {
+        $('#datetimepicker1').datetimepicker({
+          language: 'pt-BR', 
+          //Display the calendar in ISO week date format
+          weekNumbers : true,
+          weekStart : 1
+        });
+      });
+    </script>
+
+  </body>
+</html>
